@@ -19,6 +19,13 @@ This is specifically designed to be as barebones as possible. The thought is tha
 * Then run `./main [model path] [zoom] [width (optional)] [height (optional)]`
 * This can only display STL files
 
+## Demos
+
+<img width="1470" height="858" alt="Screenshot 2025-08-29 at 4 10 52 PM" src="https://github.com/user-attachments/assets/b8a91ded-f436-481b-9720-3bbad9117d72" />
+<img width="1470" height="858" alt="Screenshot 2025-08-29 at 4 11 22 PM" src="https://github.com/user-attachments/assets/90c4b1c5-a1b5-404c-a4ab-761281fb6f58" />
+<img width="1470" height="858" alt="Screenshot 2025-08-29 at 4 18 06 PM" src="https://github.com/user-attachments/assets/84bf78cc-8fbe-438f-8666-59601e7bca59" />
+<img width="1470" height="858" alt="Screenshot 2025-08-29 at 4 14 33 PM" src="https://github.com/user-attachments/assets/71c571c8-3e3b-4797-9a2d-dfed729d95be" />
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details
