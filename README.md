@@ -15,8 +15,8 @@ This is specifically designed to be as barebones as possible. The thought is tha
 
 ### Executing program
 
-* Run `make` (This should create an executable file called main)
-* Then run `./main [model path] [zoom] [width (optional)] [height (optional)]`
+* Run `make` (This should create an executable file called "TerminalSoftwareRasterizer")
+* Then run `./TerminalSoftwareRasterizer [model path] [zoom] [width (optional)] [height (optional)]`
 * This can only display STL files
 
 ## Demos
