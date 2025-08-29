@@ -4,14 +4,14 @@ Renders 3D models in the terminal. No dependencies needed!
 
 ## Description
 
-An in-depth paragraph about your project and overview of use.
+This is specifically designed to be as barebones as possible. The thought is that it is made for people to fork this and have it running on crazy devices (a DOOM wannabe, I guess). I wanted to ensure that this didn't require any third-party dependencies, so it could truly run on any machine with a terminal (ironically, I haven't tested this on a Windows machine :P). If you look at the make file, it is as barebones as can be, and the code itself uses somewhat new features (that's my bad; if anyone wants to port this to C99, please be my guest).
 
 ## Getting Started
 
 ### Dependencies
 
 * C++17
-* A terminal (ideally supports ANSI colors)
+* A terminal (ideally supports ANSI colors for better looks but not required)
 
 ### Executing program
 
