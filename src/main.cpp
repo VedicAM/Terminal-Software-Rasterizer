@@ -127,7 +127,7 @@ int main(int argc, char* argv[]) {
 
             transformed[i] = r;
 
-            vec3 proj = projection * r;
+            vec2 proj = vec2{1.0f/0.35f * r.x, 1.0f/0.35f * r.y};
             projectedX[i] = static_cast<int>(proj.x * zoom + centerX);
             projectedY[i] = static_cast<int>(proj.y * zoom + centerY);
         }
