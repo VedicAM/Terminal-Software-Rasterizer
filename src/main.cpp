@@ -13,14 +13,14 @@
 #include "ModelLoader.h"
 
 enum Colors {
-  BLACK = 0,
-  RED = 1,
-  GREEN = 2,
-  YELLOW = 3,
-  BLUE = 4,
-  MAGENTA = 5,
-  CYAN = 6,
-  WHITE = 7
+    BLACK = 0,
+    RED = 1,
+    GREEN = 2,
+    YELLOW = 3,
+    BLUE = 4,
+    MAGENTA = 5,
+    CYAN = 6,
+    WHITE = 7
 };
 
 vec3 rotateZ(vec3 point, float angle){
@@ -82,6 +82,7 @@ int main(int argc, char* argv[]) {
     else display = new Display(151, 75);
 
     ModelLoader model(argv[1]);
+    
     std::vector<vec3> points = model.vertices;
     if (points.empty()) {
         std::cerr << "No vertices loaded.\n";

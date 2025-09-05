@@ -12,9 +12,11 @@ class ModelLoader{
         void LoadSTLBinary();
         void LoadSTLASCII();
 
+        float readFloat(std::ifstream &fileStream);
+        vec3 readVector3(std::ifstream &fileStream);
+
     public:
         std::vector<vec3> vertices;
-        std::vector<vec3> normals;
         std::string path;
 
     public:
