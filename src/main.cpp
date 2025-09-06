@@ -111,7 +111,7 @@ void drawHelpMenu(Display &display) {
     int w = display.getWidth();
     int h = display.getHeight();
     int menuWidth = 40;
-    int menuHeight = 12;
+    int menuHeight = 20;
     int startX = (w - menuWidth) / 2;
     int startY = (h - menuHeight) / 2;
     display.drawRectangle({static_cast<double>(startX), static_cast<double>(startY)}, {static_cast<double>(startX+menuWidth), static_cast<double>(startY+menuHeight)}, WHITE);
@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
     }
 
     enableRawMode();
-    std::cout << "\033[2J\033[?25l" << "\n";
+
 
     Display* display = nullptr;
 
@@ -168,6 +168,14 @@ int main(int argc, char* argv[]) {
         std::cerr << "No vertices loaded.\n";
         return 1;
     }
+
+    std::cout << " ===================================================================== \n";
+    std::cout << "                  Terminal Software Rasterizer (TSR)                   \n";
+    std::cout << " ===================================================================== \n";
+    std::cout << " Loading model: " << argv[1] << "           \n";
+    std::cout << " Zoom: " << argv[2] << " | Number of Triangles: " << points.size() << "\n";
+    std::cout << " Controls: ESC=Quit | R=Reset | H=Help Menu | Right Click=Rotate Model \n";
+    std::cout.flush();
     
     std::vector<int> indices = generateIndices(points);
     vec3 centroid = computeCentroid(points);
@@ -229,6 +237,8 @@ int main(int argc, char* argv[]) {
                         hideUI = !hideUI;
                         break;
                     }
+                    case '+': case '=': zoom *= 1.1f; break;
+                    case '-': case '_': zoom *= 0.9f; break;
                     case 'r': case 'R': {
                         angleX=angleZ=0; 
                         zoom=initialZoom; 
