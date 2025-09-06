@@ -13,7 +13,6 @@ Display::~Display() {
     std::cout << "\033[?25h\033[0m";
 }
 
-/* PUBLIC FUNCTIONS*/
 void Display::setPixel(int x, int y, int color) {
       if (x >= 0 && x < width && y >= 0 && y < height) {
         backBuffer[y][x] = color;
@@ -147,8 +146,14 @@ void Display::drawTriangle(vec2 a, vec2 b, vec2 c, int color) {
     }
 }
 
+void Display::drawRectangle(vec2 a, vec2 b, int color) {
+    for(int y = a.y; y < b.y; y++) {
+        for(int x = a.x; x < b.x; x++) {
+            setPixel(x, y, color);
+        }
+    }
+}
 
-/* PRIVATE FUNCTIONS */
 std::string Display::getColorCode(int color) {
     std::stringstream ss;
     ss << "\033[48;5;" << color << "m";

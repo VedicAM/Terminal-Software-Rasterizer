@@ -1,16 +1,21 @@
-#include <__config>
-#include <ostream>
-#include <vector>
-#include <thread>
-#include <chrono>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string>
+#include <unistd.h>
+#include <termios.h>
+#include <vector>
 #include <cmath>
 #include <iostream>
 #include <algorithm>
+#include <thread>
+#include <chrono>
+
 
 #include "Matrices.h"
 #include "Display.h"
 #include "ModelLoader.h"
+#include "IO.h"
 
 enum Colors {
     BLACK = 0,
@@ -22,6 +27,8 @@ enum Colors {
     CYAN = 6,
     WHITE = 7
 };
+
+// =================== Math Helpers ===================
 
 vec3 rotateZ(vec3 point, float angle){
     vec3 returnPoint;
@@ -63,6 +70,73 @@ int colorToGreys(int intensity) {
     else return 15;
 }
 
+void drawStatusBar(int width, int height, float zoom, float angleX, float angleZ, int triangleCount, int vertexCount) {
+    std::cout << "\033[" << height << ";1H";
+    std::cout << "\033[44m\033[37m";
+    
+    char statusText[256];
+    snprintf(statusText, sizeof(statusText), 
+             " Size: %dx%d | Zoom: %.2f | Angle X: %.1f° | Angle Z: %.1f° | Triangles: %d | Vertices: %d | ESC:Quit R:Reset +/-:Zoom ",
+             width, height, zoom, angleX, angleZ, triangleCount, vertexCount);
+    
+    int textLen = strlen(statusText);
+    if (textLen > width) {
+        statusText[width] = '\0';
+    } else {
+        for (int i = textLen; i < width; i++) {
+            statusText[i] = ' ';
+        }
+        statusText[width] = '\0';
+    }
+    
+    std::cout << statusText;
+    std::cout << "\033[0m";
+    std::cout.flush();
+}
+
+void drawInfoPanel(float zoom, float angleX, float angleZ, int triangleCount, int vertexCount) {
+    std::cout << "\033[1;1H\033[46m\033[30m";
+    
+    char line1[20], line2[20], line3[20];
+    snprintf(line1, sizeof(line1), " Zoom:%6.2f ", zoom);
+    snprintf(line2, sizeof(line2), " X:%3.0f° Z:%3.0f° ", angleX, angleZ);
+    snprintf(line3, sizeof(line3), " Tri: %6d ", triangleCount);
+    
+    std::cout << line1 << "\033[2;1H\033[46m\033[30m" << line2 << "\033[3;1H\033[46m\033[30m" << line3;
+    std::cout << "\033[0m";
+    std::cout.flush();
+}
+
+void drawHelpMenu(Display &display) {
+    int w = display.getWidth();
+    int h = display.getHeight();
+    int menuWidth = 40;
+    int menuHeight = 12;
+    int startX = (w - menuWidth) / 2;
+    int startY = (h - menuHeight) / 2;
+    display.drawRectangle({static_cast<double>(startX), static_cast<double>(startY)}, {static_cast<double>(startX+menuWidth), static_cast<double>(startY+menuHeight)}, WHITE);
+
+    std::vector<std::string> lines = {
+        "         HELP MENU         ",
+        "===========================",
+        " ESC       : Quit          ",
+        " R         : Reset view    ",
+        " +/-       : Zoom in/out   ",
+        " Mouse Drag: Rotate model  ",
+        " Scroll    : Zoom          ",
+        " H         : Toggle help   ",
+        "  Press H again to close   "
+    };
+
+    int textY = startY + 2;
+    for (const auto &line : lines) {
+        int textX = startX + (menuWidth - line.size()) / 2;
+        std::cout << "\033[" << textY++ << ";" << textX << "H";
+        std::cout << "\033[47m\033[30m" << line << "\033[0m";
+    }
+}
+
+
 struct Triangle {
     int i0, i1, i2;
     float avgZ;
@@ -70,11 +144,16 @@ struct Triangle {
     float intensity;
 };
 
+// =================== Main ===================
+
 int main(int argc, char* argv[]) {
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " model.stl zoom width(optional) height(optional)\n";
         return 1;
     }
+
+    enableRawMode();
+    std::cout << "\033[2J\033[?25l" << "\n";
 
     Display* display = nullptr;
 
@@ -82,6 +161,7 @@ int main(int argc, char* argv[]) {
     else display = new Display(151, 75);
 
     ModelLoader model(argv[1]);
+    Mouse mouse;
     
     std::vector<vec3> points = model.vertices;
     if (points.empty()) {
@@ -92,45 +172,89 @@ int main(int argc, char* argv[]) {
     std::vector<int> indices = generateIndices(points);
     vec3 centroid = computeCentroid(points);
 
-    mat2x3 projection(
-        1.0f/0.35f, 0, 0,
-        0, 1.0f/0.35f, 0
-    );
-
     vec3 lightDirection = normalize(vec3{0.0f, 0.0f, -1.0f});
     vec3 viewDirection = normalize(vec3{0.0f, 0.0f, -1.0f});
-    float angle = 0.0f;
+   
+    vec2 panOffset = {0.0f, 0.0f};
+
+    float angleX = 0.0f;
+    float angleZ = 0.0f;
     float zoom = std::stof(argv[2]);
+    float initialZoom = zoom;
 
     std::vector<vec3> transformed(points.size());
     std::vector<int> projectedX(points.size());
     std::vector<int> projectedY(points.size());
 
-    std::cout << "Terminal Software Rasterizer\n";
-    std::cout << "Display size: " << display->getWidth() << "x" << display->getHeight() << "\n";
-    std::cout << "Zoom: " << argv[2] << "\n";
-    std::cout << "Press any key to start demo..." << std::endl;
-    std::cin.get();
+    static int lastX = -1, lastY = -1;
+    static int rightDown = 0;
+
+    int centerX = display->getWidth() / 2;
+    int centerY = display->getHeight() / 2;
+
+    bool hideUI = false;
 
     while (true) {
-        display->clear(CYAN);
+        // ==== Handle input ====
+        unsigned char buf[32];
+        int n = read(STDIN_FILENO, buf, sizeof(buf));
+        
+        if (n > 0) {
+            mouse.update(buf, n);
 
-        int centerX = display->getWidth() / 2;
-        int centerY = display->getHeight() / 2;
+            if(mouse.scrollUp || mouse.scrollDown) {
+                float zoomFactor = mouse.scrollUp ? 1.1f : 0.9f;
+                float mouseScreenX = mouse.x - centerX;
+                float mouseScreenY = mouse.y - centerY;
+                panOffset.x = mouseScreenX + (panOffset.x - mouseScreenX) * zoomFactor;
+                panOffset.y = mouseScreenY + (panOffset.y - mouseScreenY) * zoomFactor;
+                zoom *= zoomFactor;
+            } 
+            else if(mouse.button == 2 && !mouse.motion) { rightDown=1; lastX=mouse.x; lastY=mouse.y; }
+            else if(mouse.button == 3) { rightDown=0; }
+            else if(mouse.motion && rightDown) {
+                if(lastX>=0 && lastY>=0) {
+                    angleZ += (mouse.x - lastX) * 5.0f;
+                    angleX += (mouse.y - lastY) * 10.0f;
+                }
+                lastX = mouse.x;
+                lastY = mouse.y;
+            }
+
+            if(n==1) {
+                if (buf[0] == 27) break;
+
+                switch(buf[0]) {
+                    case 'h': {
+                        hideUI = !hideUI;
+                        break;
+                    }
+                    case 'r': case 'R': {
+                        angleX=angleZ=0; 
+                        zoom=initialZoom; 
+                        panOffset={0,0}; 
+                        break;
+                    }
+                }
+            }
+        }
+
+        // ==== Rendering ====
+        display->clear(CYAN);
 
         for (size_t i = 0; i < points.size(); ++i) {
             vec3 shifted = { points[i].x - centroid.x,
                              points[i].y - centroid.y,
                              points[i].z - centroid.z };
 
-            vec3 r = rotateZ(shifted, angle);
-            r = rotateX(r, angle);
+            vec3 r = rotateZ(shifted, angleZ);
+            r = rotateX(r, angleX);
 
             transformed[i] = r;
 
             vec2 proj = vec2{1.0f/0.35f * r.x, 1.0f/0.35f * r.y};
-            projectedX[i] = static_cast<int>(proj.x * zoom + centerX);
-            projectedY[i] = static_cast<int>(proj.y * zoom + centerY);
+            projectedX[i] = static_cast<int>(proj.x * zoom + centerX + panOffset.x);
+            projectedY[i] = static_cast<int>(proj.y * zoom + centerY + panOffset.y);
         }
 
         std::vector<Triangle> visibleTriangles;
@@ -190,15 +314,27 @@ int main(int argc, char* argv[]) {
 
             display->drawTriangle(A, B, C, static_cast<Colors>(greyShade));
         }
-
+        
         display->render();
+        
+        if (!hideUI) {
+            drawInfoPanel(zoom, angleX, angleZ, visibleTriangles.size(), points.size());
+            drawStatusBar(display->getWidth(), display->getHeight(), zoom, angleX, angleZ,
+                        visibleTriangles.size(), points.size());
+        } else {
+            drawHelpMenu(*display);
+        }
 
-        angle += 2.0f;
-        if (angle >= 360.0f) angle -= 360.0f;
+
+        std::cout.flush();
+
+        
         std::this_thread::sleep_for(std::chrono::milliseconds(17));
     }
 
+    disableRawMode();
+    
+    std::cout << "\033[2J\033[?25h\033[0m" << "\n";
     delete display;
-
     return 0;
 }

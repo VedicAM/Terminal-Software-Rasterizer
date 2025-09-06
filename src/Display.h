@@ -32,6 +32,7 @@ public:
     void drawLine(vec2 a, vec2 b, int color);
     void drawWireTriangle(vec2 a, vec2 b, vec2 c, int color);
     void drawTriangle(vec2 a, vec2 b, vec2 c, int color);
+    void drawRectangle(vec2 a, vec2 b, int color);
     
     int getWidth() const { return width; }
     int getHeight() const { return height; }
