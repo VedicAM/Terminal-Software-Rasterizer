@@ -21,11 +21,12 @@ This is specifically designed to be as barebones as possible. The thought is tha
 
 ## Demos
 
-<img width="1470" height="858" alt="Screenshot 2025-08-29 at 4 10 52 PM" src="https://github.com/user-attachments/assets/b8a91ded-f436-481b-9720-3bbad9117d72" />
-<img width="1470" height="858" alt="Screenshot 2025-08-29 at 4 11 22 PM" src="https://github.com/user-attachments/assets/90c4b1c5-a1b5-404c-a4ab-761281fb6f58" />
-<img width="1470" height="858" alt="Screenshot 2025-08-29 at 4 18 06 PM" src="https://github.com/user-attachments/assets/84bf78cc-8fbe-438f-8666-59601e7bca59" />
-<img width="1470" height="858" alt="Screenshot 2025-08-29 at 4 14 33 PM" src="https://github.com/user-attachments/assets/71c571c8-3e3b-4797-9a2d-dfed729d95be" />
+<img width="1462" height="850" alt="Screenshot 2025-09-05 at 11 21 17 PM" src="https://github.com/user-attachments/assets/73700568-2c3a-4291-9c66-6b48cae52022" />
+<img width="1462" height="850" alt="Screenshot 2025-09-05 at 11 22 32 PM" src="https://github.com/user-attachments/assets/bf611459-4afb-42cd-b354-a0a35864c694" />
+<img width="1462" height="850" alt="Screenshot 2025-09-05 at 11 23 32 PM" src="https://github.com/user-attachments/assets/41885bba-b9fb-45c0-a159-5b27004d318c" />
+<img width="1462" height="850" alt="Screenshot 2025-09-05 at 11 26 08 PM" src="https://github.com/user-attachments/assets/e9c55e88-0235-4509-b6f2-7f54ec0f9271" />
 
 ## License
+
 
 This project is licensed under the MIT License - see the LICENSE file for details
