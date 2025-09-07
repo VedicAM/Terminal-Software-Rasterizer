@@ -22,10 +22,10 @@ This is specifically designed to be as barebones as possible. The thought is tha
 
 ## Demos
 
-<img width="1462" height="850" alt="Screenshot 2025-09-05 at 11 21 17 PM" src="https://github.com/user-attachments/assets/73700568-2c3a-4291-9c66-6b48cae52022" />
-<img width="1462" height="850" alt="Screenshot 2025-09-05 at 11 22 32 PM" src="https://github.com/user-attachments/assets/bf611459-4afb-42cd-b354-a0a35864c694" />
-<img width="1462" height="850" alt="Screenshot 2025-09-05 at 11 23 32 PM" src="https://github.com/user-attachments/assets/41885bba-b9fb-45c0-a159-5b27004d318c" />
-<img width="1462" height="850" alt="Screenshot 2025-09-05 at 11 26 08 PM" src="https://github.com/user-attachments/assets/e9c55e88-0235-4509-b6f2-7f54ec0f9271" />
+<img width="1462" height="850" alt="Screenshot 2025-09-07 at 12 07 12 AM" src="https://github.com/user-attachments/assets/7b6acb37-7d5e-4e56-b366-53fe1bcfa750" />
+<img width="1462" height="850" alt="Screenshot 2025-09-07 at 12 08 00 AM" src="https://github.com/user-attachments/assets/098f4214-cdd1-438d-8438-aa5942ec6883" />
+<img width="1462" height="850" alt="Screenshot 2025-09-07 at 12 08 59 AM" src="https://github.com/user-attachments/assets/1826b1d4-dfc8-49ba-bcbf-a9e8bb6795a0" />
+<img width="1462" height="850" alt="Screenshot 2025-09-07 at 12 10 17 AM" src="https://github.com/user-attachments/assets/075983fa-1fc4-4f46-95e2-408f1b37750d" />
 
 ## License
 
