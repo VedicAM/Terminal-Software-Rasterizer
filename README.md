@@ -16,7 +16,7 @@ This is specifically designed to be as barebones as possible. The thought is tha
 ### Executing program
 
 * Run `make` (This should create an executable file called "TerminalSoftwareRasterizer")
-* Then run `./TerminalSoftwareRasterizer [model path] [zoom] [width (optional)] [height (optional)]`
+* Then run `./TerminalSoftwareRasterizer [model path] [zoom (optional)] [width (optional)] [height (optional)]`
 * This can only display STL files
 * Press H for help using the program once running
 
