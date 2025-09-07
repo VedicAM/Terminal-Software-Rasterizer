@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +11,8 @@
 #include <algorithm>
 #include <thread>
 #include <chrono>
-
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #include "Matrices.h"
 #include "Display.h"
@@ -64,20 +66,21 @@ vec3 computeCentroid(const std::vector<vec3>& vertices) {
 }
 
 int colorToGreys(int intensity) {
-    if (intensity < 64) return 0;
-    else if (intensity < 128) return 8;
-    else if (intensity < 192) return 7;
-    else return 15;
+    if (intensity < 0) intensity = 0;
+    if (intensity > 255) intensity = 255;
+
+    int mapped = 232 + (intensity * 23 / 255);
+    return mapped;
 }
 
-void drawStatusBar(int width, int height, float zoom, float angleX, float angleZ, int triangleCount, int vertexCount) {
+void drawStatusBar(int width, int height, float zoom, float angleX, float angleZ, int triangleCount, char* modelName) {
     std::cout << "\033[" << height << ";1H";
-    std::cout << "\033[44m\033[37m";
+    std::cout << "\033[47m\033[30m";
     
     char statusText[256];
     snprintf(statusText, sizeof(statusText), 
-             " Size: %dx%d | Zoom: %.2f | Angle X: %.1f° | Angle Z: %.1f° | Triangles: %d | Vertices: %d | ESC:Quit R:Reset +/-:Zoom ",
-             width, height, zoom, angleX, angleZ, triangleCount, vertexCount);
+             " Model: %s | Zoom: %.2f | Angle X: %.1f° | Angle Z: %.1f° | Triangles: %d | ESC:Quit R:Reset +/-:Zoom H:Help",
+             modelName, zoom, angleX, angleZ, triangleCount);
     
     int textLen = strlen(statusText);
     if (textLen > width) {
@@ -90,19 +93,6 @@ void drawStatusBar(int width, int height, float zoom, float angleX, float angleZ
     }
     
     std::cout << statusText;
-    std::cout << "\033[0m";
-    std::cout.flush();
-}
-
-void drawInfoPanel(float zoom, float angleX, float angleZ, int triangleCount, int vertexCount) {
-    std::cout << "\033[1;1H\033[46m\033[30m";
-    
-    char line1[20], line2[20], line3[20];
-    snprintf(line1, sizeof(line1), " Zoom:%6.2f ", zoom);
-    snprintf(line2, sizeof(line2), " X:%3.0f° Z:%3.0f° ", angleX, angleZ);
-    snprintf(line3, sizeof(line3), " Tri: %6d ", triangleCount);
-    
-    std::cout << line1 << "\033[2;1H\033[46m\033[30m" << line2 << "\033[3;1H\033[46m\033[30m" << line3;
     std::cout << "\033[0m";
     std::cout.flush();
 }
@@ -147,48 +137,81 @@ struct Triangle {
 // =================== Main ===================
 
 int main(int argc, char* argv[]) {
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " model.stl zoom width(optional) height(optional)\n";
-        return 1;
-    }
-
     enableRawMode();
 
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
-    Display* display = nullptr;
-
-    if(argc == 5) display = new Display(atoi(argv[3]), atoi(argv[4]));
-    else display = new Display(151, 75);
+    int width, height;
+    
+    if(argc == 5) {
+        width = atoi(argv[3]);
+        height = atoi(argv[4]);
+    } else {
+        width = static_cast<int>(w.ws_col); 
+        height = (static_cast<int>(w.ws_row) * 2) - 5;
+    }
+    
+    Display display(width, height);
 
     ModelLoader model(argv[1]);
     Mouse mouse;
-    
+
     std::vector<vec3> points = model.vertices;
     if (points.empty()) {
         std::cerr << "No vertices loaded.\n";
         return 1;
     }
 
-    std::cout << " ===================================================================== \n";
-    std::cout << "                  Terminal Software Rasterizer (TSR)                   \n";
-    std::cout << " ===================================================================== \n";
-    std::cout << " Loading model: " << argv[1] << "           \n";
-    std::cout << " Zoom: " << argv[2] << " | Number of Triangles: " << points.size() << "\n";
-    std::cout << " Controls: ESC=Quit | R=Reset | H=Help Menu | Right Click=Rotate Model \n";
-    std::cout.flush();
-    
     std::vector<int> indices = generateIndices(points);
     vec3 centroid = computeCentroid(points);
 
     vec3 lightDirection = normalize(vec3{0.0f, 0.0f, -1.0f});
     vec3 viewDirection = normalize(vec3{0.0f, 0.0f, -1.0f});
-   
+
     vec2 panOffset = {0.0f, 0.0f};
 
     float angleX = 0.0f;
     float angleZ = 0.0f;
-    float zoom = std::stof(argv[2]);
-    float initialZoom = zoom;
+    float initialZoom, zoom;
+
+    if(argc == 2) {
+        vec3 minBB = { 1e9f, 1e9f, 1e9f };
+        vec3 maxBB = { -1e9f, -1e9f, -1e9f };
+
+        for (auto& p : points) {
+            vec3 centered = { p.x - centroid.x, p.y - centroid.y, p.z - centroid.z };
+            minBB.x = std::min(minBB.x, centered.x);
+            minBB.y = std::min(minBB.y, centered.y);
+            minBB.z = std::min(minBB.z, centered.z);
+            maxBB.x = std::max(maxBB.x, centered.x);
+            maxBB.y = std::max(maxBB.y, centered.y);
+            maxBB.z = std::max(maxBB.z, centered.z);
+        }
+
+        float projScale = 1.0f / 0.35f;
+        float modelWidth  = (maxBB.x - minBB.x) * projScale;
+        float modelHeight = (maxBB.y - minBB.y) * projScale;
+
+        float zoomX = (display.getWidth()  * 0.9f) / modelWidth;
+        float zoomY = (display.getHeight() * 0.9f) / modelHeight;
+
+        initialZoom = std::min(zoomX, zoomY);
+        zoom = initialZoom;
+    } else {
+        zoom = std::stof(argv[2]); 
+        initialZoom = zoom;
+    }
+
+    std::cout << " ===================================================================== \n";
+    std::cout << "                  Terminal Software Rasterizer (TSR)                   \n";
+    std::cout << " ===================================================================== \n";
+    std::cout << " Loading model: " << argv[1] << "           \n";
+    std::cout << " Size: " << width << "x" << height << "\n";
+    std::cout << " Zoom: " << initialZoom << " | Number of Triangles: " << points.size() << "\n";
+    std::cout << " Controls: ESC=Quit | R=Reset | H=Help Menu | Right Click=Rotate Model \n";
+    std::cout.flush();
+
 
     std::vector<vec3> transformed(points.size());
     std::vector<int> projectedX(points.size());
@@ -197,27 +220,29 @@ int main(int argc, char* argv[]) {
     static int lastX = -1, lastY = -1;
     static int rightDown = 0;
 
-    int centerX = display->getWidth() / 2;
-    int centerY = display->getHeight() / 2;
+    int centerX = display.getWidth() / 2;
+    int centerY = display.getHeight() / 2;
 
     bool hideUI = false;
 
     while (true) {
-        // ==== Handle input ====
         unsigned char buf[32];
         int n = read(STDIN_FILENO, buf, sizeof(buf));
-        
+
         if (n > 0) {
             mouse.update(buf, n);
 
             if(mouse.scrollUp || mouse.scrollDown) {
                 float zoomFactor = mouse.scrollUp ? 1.1f : 0.9f;
-                float mouseScreenX = mouse.x - centerX;
-                float mouseScreenY = mouse.y - centerY;
-                panOffset.x = mouseScreenX + (panOffset.x - mouseScreenX) * zoomFactor;
-                panOffset.y = mouseScreenY + (panOffset.y - mouseScreenY) * zoomFactor;
+
+                float mouseRelX = mouse.x - (centerX + panOffset.x);
+                float mouseRelY = mouse.y - (centerY + panOffset.y);
+
+                panOffset.x += mouseRelX - mouseRelX * zoomFactor;
+                panOffset.y += mouseRelY - mouseRelY * zoomFactor;
+
                 zoom *= zoomFactor;
-            } 
+            }
             else if(mouse.button == 2 && !mouse.motion) { rightDown=1; lastX=mouse.x; lastY=mouse.y; }
             else if(mouse.button == 3) { rightDown=0; }
             else if(mouse.motion && rightDown) {
@@ -240,9 +265,9 @@ int main(int argc, char* argv[]) {
                     case '+': case '=': zoom *= 1.1f; break;
                     case '-': case '_': zoom *= 0.9f; break;
                     case 'r': case 'R': {
-                        angleX=angleZ=0; 
-                        zoom=initialZoom; 
-                        panOffset={0,0}; 
+                        angleX=angleZ=0;
+                        zoom=initialZoom;
+                        panOffset={0,0};
                         break;
                     }
                 }
@@ -250,7 +275,7 @@ int main(int argc, char* argv[]) {
         }
 
         // ==== Rendering ====
-        display->clear(CYAN);
+        display.clear(BLACK);
 
         for (size_t i = 0; i < points.size(); ++i) {
             vec3 shifted = { points[i].x - centroid.x,
@@ -283,30 +308,30 @@ int main(int argc, char* argv[]) {
 
             vec3 e1 = {v1.x - v0.x, v1.y - v0.y, v1.z - v0.z};
             vec3 e2 = {v2.x - v0.x, v2.y - v0.y, v2.z - v0.z};
-            vec3 n = normalize(cross(e1, e2));
+            vec3 nrm = normalize(cross(e1, e2));
 
-            float backfaceDot = dot(n, viewDirection);
+            float backfaceDot = dot(nrm, viewDirection);
             if (backfaceDot < 0.0f) {
                 continue;
             }
 
-            float intensity = dot(n, lightDirection);
+            float intensity = dot(nrm, lightDirection);
             if (intensity > 0.0f) {
                 float avgZ = (v0.z + v1.z + v2.z) / 3.0f;
-                
+
                 Triangle tri;
                 tri.i0 = i0;
                 tri.i1 = i1;
                 tri.i2 = i2;
                 tri.avgZ = avgZ;
-                tri.normal = n;
+                tri.normal = nrm;
                 tri.intensity = intensity;
-                
+
                 visibleTriangles.push_back(tri);
             }
         }
 
-        std::sort(visibleTriangles.begin(), visibleTriangles.end(), 
+        std::sort(visibleTriangles.begin(), visibleTriangles.end(),
                   [](const Triangle& a, const Triangle& b) {
                       return a.avgZ > b.avgZ;
                   });
@@ -322,29 +347,25 @@ int main(int argc, char* argv[]) {
             vec2 C = { static_cast<double>(projectedX[tri.i2]),
                        static_cast<double>(projectedY[tri.i2]) };
 
-            display->drawTriangle(A, B, C, static_cast<Colors>(greyShade));
-        }
-        
-        display->render();
-        
-        if (!hideUI) {
-            drawInfoPanel(zoom, angleX, angleZ, visibleTriangles.size(), points.size());
-            drawStatusBar(display->getWidth(), display->getHeight(), zoom, angleX, angleZ,
-                        visibleTriangles.size(), points.size());
-        } else {
-            drawHelpMenu(*display);
+            display.drawTriangle(A, B, C, static_cast<Colors>(greyShade));
         }
 
+        display.render();
+
+        if (!hideUI) {
+            drawStatusBar(display.getWidth(), display.getHeight(), zoom, angleX, angleZ,
+                          visibleTriangles.size(), argv[1]);
+        } else {
+            drawHelpMenu(display);
+        }
 
         std::cout.flush();
 
-        
         std::this_thread::sleep_for(std::chrono::milliseconds(17));
     }
 
     disableRawMode();
-    
+
     std::cout << "\033[2J\033[?25h\033[0m" << "\n";
-    delete display;
     return 0;
 }
