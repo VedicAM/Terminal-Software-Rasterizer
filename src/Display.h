@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <algorithm>
+#include <cstring>
 
 #include "Matrices.h"
 
